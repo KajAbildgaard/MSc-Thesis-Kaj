@@ -128,11 +128,11 @@ class Model(CICDModel):
             self.idata.initial.temperature_gradient = 30  # [K/km]
             self.idata.initial.temperature_at_ref_depth = 273.15 + 20 # [K]
 
-        p3d = self.reservoir.mesh.pressure[:-(2*nz)].reshape(self.idata['nx'], self.idata['ny'], self.idata['nz'], order='F')
-        extra_p_along_y = np.linspace(20, 0, self.idata['ny'])
-        extra_p_along_y = np.expand_dims(extra_p_along_y, [0, 2])
-        p3d += extra_p_along_y
-        self.reservoir.mesh.pressure = p3d.flatten(order='A')  
+        # p3d = self.reservoir.mesh.pressure[:-(2*nz)].reshape(self.idata['nx'], self.idata['ny'], self.idata['nz'], order='F')
+        # extra_p_along_y = np.linspace(20, 0, self.idata['ny'])
+        # extra_p_along_y = np.expand_dims(extra_p_along_y, [0, 2])
+        # p3d += extra_p_along_y
+        # self.reservoir.mesh.pressure = p3d.flatten(order='A')  
 
         # # well controls
         # wctrl = self.idata.wells.controls  # short name
