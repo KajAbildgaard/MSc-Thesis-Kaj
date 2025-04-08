@@ -32,28 +32,29 @@ class Model(CICDModel):
         enth_init = self.physics.property_containers[0].compute_total_enthalpy(state_init, T_init)
         self.initial_values = {self.physics.vars[0]: state_init[0],
                                self.physics.vars[1]: enth_init
-                               }
+                               } 
 
     def set_reservoir(self):
         (nx, ny, nz) = (60, 60, 3)
         nb = nx * ny * nz
+        # perm = np.ones(nb) * 2000
+        # perm = load_single_keyword('permXVanEssen.in', 'PERMX')
+        # perm = perm[:nb]
         perm = np.ones(nb) * 2000
-        perm = load_single_keyword('permXVanEssen.in', 'PERMX')
-        perm = perm[:nb]
 
         poro = np.ones(nb) * 0.2
         dx = 30
         dy = 30
         dz = np.ones(nb) * 30
 
-        # discretize structured reservoir
+        # discretize structured reservoir   
         self.reservoir = StructReservoir(self.timer, nx=nx, ny=ny, nz=nz, dx=dx, dy=dy, dz=dz,
                                          permx=perm, permy=perm, permz=perm * 0.1, poro=poro, depth=2000,
                                          hcap=2200, rcond=500)
-        self.reservoir.boundary_volumes['yz_minus'] = 1e8
-        self.reservoir.boundary_volumes['yz_plus'] = 1e8
-        self.reservoir.boundary_volumes['xz_minus'] = 1e8
-        self.reservoir.boundary_volumes['xz_plus'] = 1e8
+        self.reservoir.boundary_volumes['yz_minus'] = 1e20
+        self.reservoir.boundary_volumes['yz_plus'] = 1e20
+        self.reservoir.boundary_volumes['xz_minus'] = 1e20
+        self.reservoir.boundary_volumes['xz_plus'] = 1e20
 
         return
 
@@ -85,10 +86,10 @@ class Model(CICDModel):
     def set_well_controls(self):
         for i, w in enumerate(self.reservoir.wells):
             if i == 0:
-                w.control = self.physics.new_rate_water_inj(8000, 300)
+                w.control = self.physics.new_rate_water_inj(8000, 300) #8000
                 # w.control = self.physics.new_bhp_water_inj(230, 308.15)
             else:
-                w.control = self.physics.new_rate_water_prod(8000)
+                w.control = self.physics.new_rate_water_prod(8000) #8000
                 # w.control = self.physics.new_bhp_prod(180)
 
     def compute_temperature(self, X):
@@ -110,46 +111,28 @@ class Model(CICDModel):
         else:
             self.idata.fluid = GeothermalPHFluidProps()
 
-        # example - how to change the properties
-        # self.idata.fluid.density['water'] = DensityBasic(compr=1e-5, dens0=1014)
-
-        #from darts.physics.properties.basic import ConstFunc
-        #self.idata.fluid.conduction_ev['water'] = ConstFunc(172.8)
-
-        if init_type== 'uniform': # uniform initial conditions
-            self.idata.initial.initial_pressure = 200.  # bars
-            self.idata.initial.initial_temperature = 350.  # K
-        elif init_type == 'gradient':         # gradient by depth
-            self.idata.initial.reference_depth_for_pressure = 0  # [m]
-            self.idata.initial.pressure_gradient = 100  # [bar/km]
-            self.idata.initial.pressure_at_ref_depth = 1 # [bars]
-        
-            self.idata.initial.reference_depth_for_temperature = 0  # [m]
-            self.idata.initial.temperature_gradient = 30  # [K/km]
-            self.idata.initial.temperature_at_ref_depth = 273.15 + 20 # [K]
-
-        # p3d = self.reservoir.mesh.pressure[:-(2*nz)].reshape(self.idata['nx'], self.idata['ny'], self.idata['nz'], order='F')
-        # extra_p_along_y = np.linspace(20, 0, self.idata['ny'])
-        # extra_p_along_y = np.expand_dims(extra_p_along_y, [0, 2])
-        # p3d += extra_p_along_y
-        # self.reservoir.mesh.pressure = p3d.flatten(order='A')  
-
-        # # well controls
-        # wctrl = self.idata.wells.controls  # short name
-        # wctrl.type = 'rate'
-        # #wctrl.type = 'bhp'
-        # if wctrl.type == 'bhp':
-        #     self.idata.wells.controls.inj_bhp = 250 # bars
-        #     self.idata.wells.controls.prod_bhp = 100 # bars
-        # elif wctrl.type == 'rate':
-        #     self.idata.wells.controls.inj_rate = 5500 # m3/day
-        #     self.idata.wells.controls.inj_bhp_constraint = 300 # upper limit for bhp, bars
-        #     self.idata.wells.controls.prod_rate = 5500 # m3/day
-        #     self.idata.wells.controls.prod_bhp_constraint = 70 # lower limit for bhp, bars
-        # self.idata.wells.controls.inj_bht = 300  # K
-
         self.idata.obl.n_points = n_points
         self.idata.obl.min_p = 1.
         self.idata.obl.max_p = 351.
         self.idata.obl.min_e = 1000.  # kJ/kmol, will be overwritten in PHFlash physics
         self.idata.obl.max_e = 10000.  # kJ/kmol, will be overwritten in PHFlash physics
+
+    def compute_additional_pressure(self, x_coords, y_coords, grad_x, grad_y):
+        return grad_x * x_coords + grad_y * y_coords
+
+    def apply_additional_pressure_gradient(self):
+        # Retrieve the current pressure field
+        pressure = np.array(self.reservoir.mesh.pressure, copy=False)
+        # Use the same grid parameters as defined in set_reservoir
+        nx, ny, nz = 60, 60, 3
+        dx, dy = 30, 30
+
+        total_cells = pressure.size
+        x_coords = np.array([ (i % nx) * dx for i in range(total_cells) ])
+        y_coords = np.array([ ((i // nx) % ny) * dy for i in range(total_cells) ])
+
+        additional_grad_x = 50
+        additional_grad_y = 30
+
+        additional_offset = self.compute_additional_pressure(x_coords, y_coords, additional_grad_x, additional_grad_y)
+        pressure[:] += additional_offset
