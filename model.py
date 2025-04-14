@@ -117,22 +117,98 @@ class Model(CICDModel):
         self.idata.obl.min_e = 1000.  # kJ/kmol, will be overwritten in PHFlash physics
         self.idata.obl.max_e = 10000.  # kJ/kmol, will be overwritten in PHFlash physics
 
-    def compute_additional_pressure(self, x_coords, y_coords, grad_x, grad_y):
-        return grad_x * x_coords + grad_y * y_coords
+    # def set_initial_conditions(self, mesh=None, pressure_grad=100, temperature_grad=30,
+    #                                     ref_depth_p=0, p_at_ref_depth=1,
+    #                                     ref_depth_T=0, T_at_ref_depth=293.15,
+    #                                     add_press_grad_x=0.01, add_press_grad_y=0.01):  #set_nonuniform_initial_conditions
+    #     """
+    #     Function to set nonuniform initial reservoir condition
 
-    def apply_additional_pressure_gradient(self):
-        # Retrieve the current pressure field
-        pressure = np.array(self.reservoir.mesh.pressure, copy=False)
-        # Use the same grid parameters as defined in set_reservoir
-        nx, ny, nz = 60, 60, 3
-        dx, dy = 30, 30
+    #     :param mesh: :class:`Mesh` object
+    #     :param pressure_grad: Pressure gradient, calculates pressure based on depth [1/km]
+    #     :param temperature_grad: Temperature gradient, calculates temperature based on depth [1/km]
+    #     :param ref_depth_p: the reference depth for the pressure, km
+    #     :param p_at_ref_depth: the value of the pressure at the reference depth, bars
+    #     :param ref_depth_T: the reference depth for the temperature, km
+    #     :param T_at_ref_depth: the value of the temperature at the reference depth, K
+    #     """
+    #     if mesh is None:
+    #         mesh = self.reservoir.mesh
 
-        total_cells = pressure.size
-        x_coords = np.array([ (i % nx) * dx for i in range(total_cells) ])
-        y_coords = np.array([ ((i // nx) % ny) * dy for i in range(total_cells) ])
+    #     depth = np.array(mesh.depth, dtype=float)
+       
+    #     # Set the initial pressure and temperature
+    #     pressure = np.array(mesh.pressure, copy=False)
+    #     pressure[:] = (depth[:pressure.size] / 1000 - ref_depth_p) * pressure_grad + p_at_ref_depth
+    #     temperature = (depth[:pressure.size] / 1000 - ref_depth_T) * temperature_grad + T_at_ref_depth
 
-        additional_grad_x = 50
-        additional_grad_y = 30
+    #     # Set the initial enthalpy for each block.                 #TRY add first and after
+    #     enthalpy = np.array(mesh.enthalpy, copy=False)
+    #     for j in range(mesh.n_blocks):                          #mesh.n_blocks
+    #         # Create a state vector with the current pressure and a placeholder for enthalpy.
+    #         state = value_vector([pressure[j], 0])
+    #         # Compute total enthalpy using the physics property container.
+    #         enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state, temperature[j])
+       
+    #     #Additionnal pressure field
+    #     nx = self.reservoir.nx  
+    #     ny = self.reservoir.ny  
+    #     nz = self.reservoir.nz  
+    #     dx = self.reservoir.global_data['dx'][0, 0, 0]  
+    #     dy = self.reservoir.global_data['dy'][0, 0, 0]  
+    #     n_res = mesh.n_res_blocks  # number of reservoir blocks (e.g., 10800)
+        
+    #     #Pressure Gradient
+    #     harmonic_layer = np.zeros(nz)
+    #     for k in range(nz):
+    #         layer_perm = self.reservoir.global_data['permx'][:, :, k]  
+    #         harmonic_layer[k] = 1 / np.mean(1 / layer_perm)
+    #     k_eff = np.mean(harmonic_layer)  #mD, convert to m2 still!
+        
+    #     state_new = value_vector([np.mean(pressure), np.mean(enthalpy)])
+    #     mu = self.physics.property_containers[0].viscosity_ev['water'].evaluate(state_new) #cP?
+    #     density = self.physics.property_containers[0].density_ev['water'].evaluate(state_new) #kg/m^3
+    #     print('DENSITY is = ', density)
 
-        additional_offset = self.compute_additional_pressure(x_coords, y_coords, additional_grad_x, additional_grad_y)
-        pressure[:] += additional_offset
+    #     p3d = pressure[:n_res].reshape(nx, ny, nz, order='F')
+    #     extra_p_along_x = np.linspace(add_press_grad_x*nx*dx, 0, nx)
+    #     extra_p_along_x = extra_p_along_x[:, np.newaxis, np.newaxis]
+    #     extra_p_along_y = np.linspace(add_press_grad_y*ny*dy, 0, ny)
+    #     extra_p_along_y = extra_p_along_y[np.newaxis, :, np.newaxis]
+    #     p3d += extra_p_along_x + extra_p_along_y
+    #     pressure[:n_res] = p3d.flatten(order='A')
+
+    #     # Set the initial enthalpy for reservoir blocks
+    #     for j in range(n_res):                          #mesh.n_blocks
+    #         # Create a state vector with the current pressure and a placeholder for enthalpy.
+    #         state = value_vector([pressure[j], 0])
+    #         # Compute total enthalpy using the physics property container.
+    #         enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state, temperature[j])
+
+    def set_rhs_flux(self, t, inflow_cells: np.array = None, inflow_var_idx: int = None, outflow: float = None):  
+        '''
+        function to specify the inflow or outflow to the cells
+        it sets up self.rhs_flux vector on nvar * ncells size
+        which will be added to rhs in darts_model.run_python function
+        :param inflow_cells: cell indices where to apply inflow or outflow
+        :param inflow_var_idx: variable index [0..nvars-1]
+        :param outflow: inflow_var_idx<nc => kg/day, else kJ/day (thermal var)
+        if outflow < 0 then it is actually inflow
+        '''
+        
+        if inflow_cells is None:
+            inflow_cells = np.concatenate([np.arange(self.reservoir.nx) + i * 3600 for i in range(self.reservoir.nz)]) #np.array([(self.reservoir.nx // 2)])
+        if inflow_var_idx is None:
+            inflow_var_idx = 0
+        if outflow is None:
+            outflow = -1e14
+        nv = self.physics.n_vars
+        nb = self.reservoir.mesh.n_res_blocks
+        self.rhs_flux = np.zeros(nb * nv)
+        # extract pointer to values corresponding to var_idx
+        rhs_flux_var = self.rhs_flux[inflow_var_idx::nv]
+        # set values for the cells defined in inflow_cells
+        rhs_flux_var[inflow_cells] = outflow
+        
+        return self.rhs_flux
+        #Call it in the end of constructor: self.set_rhs_flux(inflow_cells=np.array([self.reservoir.nx // 2]), inflow_var_idx=0, outflow=outflow)
