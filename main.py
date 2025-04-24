@@ -8,11 +8,11 @@ import numpy as np
 
 years = 20
 m = Model(iapws_physics=True)
-m.init()
+m.init(discr_type='mpfa') 
 
 for t in range(years):
     m.run(365)
-m.output_to_vtk()
+m.output_to_vtk(output_directory='output\\mpfa runs\\model_1 q=3.1e-7 dir=45')
 m.print_timers()
 
 
