@@ -1,0 +1,2 @@
+# Ignore my generated outputs (big files I don’t want in GitHub)
+output/
