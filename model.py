@@ -37,25 +37,41 @@ class Model(CICDModel):
     def set_reservoir(self):
         (nx, ny, nz) = (62, 62, 18 + 25 + 18)
         nb = nx * ny * nz
-        #perm = np.ones(nb) * 2000
-        perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_perm.txt', 'PERM')
-        perm = perm[:nb]
 
-        #poro = np.ones(nb) * 0.2
-        poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_poro.txt', 'PORO')
-        poro = poro[:nb]
+            #Homogeneous
+        perm = np.hstack([[0.001] * 18, 
+                          [250] * 25,             #2000 test
+                          [0.001] * 18]).astype(float)
+        perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
+            #Heterogeneous
+        # perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_perm.txt', 'PERM')
+        # perm = perm[:nb]
 
-        #rcond = 500
-        rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_rcond.txt', 'RCOND')
-        rcond = rcond[:nb]
+            #Homogeneous
+        poro = np.hstack([[0.001] * 18, 
+                          [0.10] * 25, 
+                          [0.001] * 18]).astype(float)
+        poro = np.broadcast_to(poro[None, None, :], (nx, ny, nz))
+            #Heterogeneous
+        # poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_poro.txt', 'PORO')
+        # poro = poro[:nb]
+
+            #Homogeneous
+        rcond = np.hstack([[216] * 18, 
+                           [350] * 25, 
+                           [216] * 18]).astype(float)
+        rcond = np.broadcast_to(rcond[None, None, :], (nx, ny, nz))
+            #Heterogeneous
+        # rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_rcond.txt', 'RCOND')
+        # rcond = rcond[:nb]
 
         dx = np.hstack([[200] * 5, [100] * 5, [50] * 3,
                         [50] * 36,
                         [50] * 3, [100] * 5, [200] * 5]).astype(float)
         dy = dx
-        dz = np.hstack([[30, 30, 30, 30, 30, 30, 30, 30, 30, 20, 20, 10, 10, 10, 6, 6, 4, 4],
-                        [4] * 25,
-                        [4, 4, 6, 6, 10, 10, 10, 20, 20, 30, 30, 30, 30, 30, 30, 30, 30, 30]]).astype(float)
+        dz = np.hstack([[30] * 9, [20] * 2, [10] * 3, [6] * 2, [4] * 2,
+                        [4] * 25, 
+                        [4] * 2, [6] * 2, [10] * 3, [20] * 2, [30] * 9]).astype(float)
         
         dx = np.broadcast_to(dx[:, None, None], (nx, ny, nz))
         dy = np.broadcast_to(dy[None, :, None], (nx, ny, nz))
@@ -97,13 +113,13 @@ class Model(CICDModel):
             self.physics.determine_obl_bounds(state_min=[self.idata.obl.min_p, 273.15],
                                               state_max=[self.idata.obl.max_p, 373.15])
 
-    def set_well_controls(self):
+    def set_well_controls(self, rate=8000):
         for i, w in enumerate(self.reservoir.wells):
             if i == 0:
-                w.control = self.physics.new_rate_water_inj(8000, 300) #8000
+                w.control = self.physics.new_rate_water_inj(rate, 300) #8000
                 # w.control = self.physics.new_bhp_water_inj(230, 308.15)
             else:
-                w.control = self.physics.new_rate_water_prod(8000) #8000
+                w.control = self.physics.new_rate_water_prod(rate) #8000
                 # w.control = self.physics.new_bhp_prod(180)
 
     def compute_temperature(self, X):
@@ -148,7 +164,7 @@ class Model(CICDModel):
         """
         #INPUT: q_max and direction for GRADIENT
         q_max = 3.1e-07        #m/s  3.1e-07
-        direction = 45         #0, 45, 90, 135, 180, 225, 270, 315
+        direction = 0          #0, 45, 90, 135, 180, 225, 270, 315
         
         if mesh is None:
             mesh = self.reservoir.mesh
@@ -168,11 +184,12 @@ class Model(CICDModel):
             # Compute total enthalpy using the physics property container.
             enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state, temperature[j])
        
-        #Additionnal pressure field
+        #Additional pressure field
         nx = self.reservoir.nx  
         ny = self.reservoir.ny  
         nz = self.reservoir.nz   
         n_res = mesh.n_res_blocks  # number of reservoir blocks 
+        mz = 25                    # middle layers of the reservoir
 
         dx = self.reservoir.global_data['dx']
         dy = self.reservoir.global_data['dy']
@@ -187,12 +204,15 @@ class Model(CICDModel):
         state_new = value_vector([np.mean(pressure), np.mean(enthalpy)])
         mu = self.physics.property_containers[0].viscosity_ev['water'].evaluate(state_new) #cP?
         density = self.physics.property_containers[0].density_ev['water'].evaluate(state_new) #kg/m^3
-        harmonic_layer = np.zeros(nz)
-        for k in range(nz):
-            layer_perm = self.reservoir.global_data['permx'][:, :, k]  
-            harmonic_layer[k] = 1 / np.mean(1 / layer_perm)
-        k_eff = np.mean(harmonic_layer)  #mD
 
+        harmonic_layer = np.zeros(mz)
+        for i, k in enumerate(range((nz-mz)//2, (nz-mz)//2 + mz)): #range(18, 43)
+            A = dx[:, :, k] * dy[:, :, k]
+            perm = self.reservoir.global_data['permx'][:, :, k]
+            harmonic_layer[i] = np.sum(A) / np.sum(A / perm)  
+        k_eff = np.mean(harmonic_layer)  #mD
+        k_eff = 2.4                      #mD test
+        
         gradient = 1.0e-5 * q_max * (mu*0.001) / (density * g * k_eff*9.869233e-16)  #bar/m
         # print('GRADIENT is', gradient)
             
