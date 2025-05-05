@@ -6,39 +6,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-output_directory = r'output/Test/q=3.1e-07/homogeneous, dir=0 test2'
+output_directory = r'output/Production/q=3.1e-07/homogeneous, dir=90'
 os.makedirs(output_directory, exist_ok=True)
 
-years_prod = 20
-years_recharge = 0
+days_prod = 40*365
+days_recharge = 0*365
+
 m = Model(iapws_physics=True)
 m.init(discr_type='mpfa', output_folder=output_directory) 
 
-for t in range(years_prod):
-    m.run(365)
-m.set_well_controls(rate=0)
-for t in range(years_recharge//50): #output each 50 years
-    m.run(50*365)
-m.output_to_vtk(output_directory=output_directory)
+m.run(days=days_prod, verbose=False)                                # for t in range(years_prod):
+m.output_to_vtk(ith_step=0, output_directory=output_directory)      #     m.run(365)
+m.output_to_vtk(ith_step=1, output_directory=output_directory)      # m.set_well_controls(rate=0)
+
+# m.set_well_controls(rate=0)                                         # for t in range(years_recharge//50): #output each 50 years  
+# m.run(days=days_recharge, verbose=False)                            #     m.run(50*365)
+# m.output_to_vtk(ith_step=2, output_directory=output_directory)      # m.output_to_vtk(output_directory=output_directory)
+
 m.print_timers()
-
-# pvd = os.path.join(output_directory, "solution.pvd")
-# try:    os.remove(pvd)
-# except: pass
-# days_prod = 20*365
-# days_recharge = 0*365
-# m = Model(iapws_physics=True)
-# m.init(discr_type='mpfa', output_folder=output_directory) 
-
-# m.run(days=days_prod, verbose=False)
-# m.output_to_vtk(ith_step=0, output_directory=output_directory)
-# m.output_to_vtk(ith_step=1, output_directory=output_directory)
-# m.set_well_controls(rate=0)
-# # for t in range(years_recharge//50): #output each 50 years
-# #     m.run(50*365)
-# # m.output_to_vtk(output_directory=output_directory)
-# m.print_timers()
-
 
 td = pd.DataFrame.from_dict(m.physics.engine.time_data)
 td_path = os.path.join(output_directory, 'darts_time_data.pkl')

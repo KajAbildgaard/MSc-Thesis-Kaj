@@ -40,7 +40,7 @@ class Model(CICDModel):
 
             #Homogeneous
         perm = np.hstack([[0.001] * 18, 
-                          [250] * 25,             #2000 test
+                          [250] * 25,             
                           [0.001] * 18]).astype(float)
         perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
             #Heterogeneous
@@ -164,7 +164,7 @@ class Model(CICDModel):
         """
         #INPUT: q_max and direction for GRADIENT
         q_max = 3.1e-07        #m/s  3.1e-07
-        direction = 0          #0, 45, 90, 135, 180, 225, 270, 315
+        direction = 90          #0, 45, 90, 135, 180, 225, 270, 315
         
         if mesh is None:
             mesh = self.reservoir.mesh
@@ -211,7 +211,7 @@ class Model(CICDModel):
             perm = self.reservoir.global_data['permx'][:, :, k]
             harmonic_layer[i] = np.sum(A) / np.sum(A / perm)  
         k_eff = np.mean(harmonic_layer)  #mD
-        k_eff = 2.4                      #mD test
+        # k_eff = 2.4                      #mD from averages
         
         gradient = 1.0e-5 * q_max * (mu*0.001) / (density * g * k_eff*9.869233e-16)  #bar/m
         # print('GRADIENT is', gradient)
