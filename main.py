@@ -7,10 +7,11 @@ import numpy as np
 import os
 
 Inputs = [['Production'],     # Production or Recharge
-          ['model 4'],    # Model name
+          ['model 4'],        # Model name
           [3.1e-07],          # Background flow rate (m/s) 3.1e-07
           [8000],             # Well rate (m3/day)
-          [120],               # Number of production years
+
+          [40],               # Number of production years
           [2500]]             # Number of recharge years     
 
 def run_main(input):
@@ -20,7 +21,7 @@ def run_main(input):
         os.makedirs(output_directory, exist_ok=True)
         main(input, output_directory, dir)
     else:
-        dir = [90]#[0, 45, 90, 135, 180, 225, 270, 315]  
+        dir = [0, 45, 90, 135, 180, 225, 270, 315]  
         for i in range(len(dir)):
             output_directory = f'output/{input[0][0]}/q={input[2][0]}, WR={input[3][0]}/{input[1][0]}, dir={dir[i]}'
             os.makedirs(output_directory, exist_ok=True)
@@ -70,7 +71,7 @@ def main(input, output_directory, dir):
     try:
         print('lifetime = %d years' % (td['time'][td[col_prd] <= threshold].iloc[0] / 365))
     except IndexError:
-        print('lifetime not reached')
+        print('LIFETIME NOT REACHED')
 
 # RUN MAIN WITH ALL INPUTS
 input = {}

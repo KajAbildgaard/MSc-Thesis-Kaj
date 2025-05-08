@@ -237,10 +237,10 @@ class Model(CICDModel):
             perm = self.reservoir.global_data['permx'][:, :, k]
             harmonic_layer[i] = np.sum(A) / np.sum(A / perm)  
         k_eff = np.mean(harmonic_layer)    #mD
-        k_eff = 200                      #mD from averages
+        k_eff = 200                        #mD from averages, for heterogeneous
         
         gradient = 1.0e-5 * q * (mu*0.001) / (k_eff*9.869233e-16)  #bar/m
-        # print('GRADIENT is', gradient)
+        print('GRADIENT is', gradient)
             
         if add_press_grad is None:
             add_press_grad = gradient #gradient
