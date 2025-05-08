@@ -226,10 +226,10 @@ class Model(CICDModel):
         x_dist = np.concatenate(([0], np.cumsum(dx_vec)[:-1]))
         y_dist = np.concatenate(([0], np.cumsum(dy_vec)[:-1]))
         
-        g = 9.81
+        #g = 9.81
         state_new = value_vector([np.mean(pressure), np.mean(enthalpy)])
         mu = self.physics.property_containers[0].viscosity_ev['water'].evaluate(state_new) #cP?
-        density = self.physics.property_containers[0].density_ev['water'].evaluate(state_new) #kg/m^3
+        #density = self.physics.property_containers[0].density_ev['water'].evaluate(state_new) #kg/m^3
 
         harmonic_layer = np.zeros(mz)
         for i, k in enumerate(range((nz-mz)//2, (nz-mz)//2 + mz)): #range(18, 43)
@@ -237,9 +237,9 @@ class Model(CICDModel):
             perm = self.reservoir.global_data['permx'][:, :, k]
             harmonic_layer[i] = np.sum(A) / np.sum(A / perm)  
         k_eff = np.mean(harmonic_layer)    #mD
-        # k_eff = 2.4                      #mD from averages
+        k_eff = 200                      #mD from averages
         
-        gradient = 1.0e-5 * q * (mu*0.001) / (density * g * k_eff*9.869233e-16)  #bar/m
+        gradient = 1.0e-5 * q * (mu*0.001) / (k_eff*9.869233e-16)  #bar/m
         # print('GRADIENT is', gradient)
             
         if add_press_grad is None:

@@ -7,10 +7,10 @@ import numpy as np
 import os
 
 Inputs = [['Production'],     # Production or Recharge
-          ['homogeneous'],    # Model name
-          [3.1e-07],          # Background flow rate (m/s)
+          ['model 4'],    # Model name
+          [3.1e-07],          # Background flow rate (m/s) 3.1e-07
           [8000],             # Well rate (m3/day)
-          [40],               # Number of production years
+          [120],               # Number of production years
           [2500]]             # Number of recharge years     
 
 def run_main(input):
@@ -20,7 +20,7 @@ def run_main(input):
         os.makedirs(output_directory, exist_ok=True)
         main(input, output_directory, dir)
     else:
-        dir = [0] #[0, 45, 90, 135, 180, 225, 270, 315]
+        dir = [90]#[0, 45, 90, 135, 180, 225, 270, 315]  
         for i in range(len(dir)):
             output_directory = f'output/{input[0][0]}/q={input[2][0]}, WR={input[3][0]}/{input[1][0]}, dir={dir[i]}'
             os.makedirs(output_directory, exist_ok=True)
@@ -45,7 +45,9 @@ def main(input, output_directory, dir):
 
     if input[0][0] == 'Recharge':
         m.set_well_controls(rate=0)                                          
-        m.run(days=days_recharge, verbose=False)                            
+        m.run(days=40*365, verbose=False) # 40 years, max_ts=365
+        m.set_sim_params(max_ts=3650)     
+        m.run(days=days_recharge - 40*365, verbose=False)                       
         m.output_to_vtk(ith_step=2, output_directory=output_directory)      
 
     m.print_timers()
@@ -58,12 +60,17 @@ def main(input, output_directory, dir):
     with pd.ExcelWriter(excel_path) as writer:
         td.to_excel(writer, sheet_name='Sheet1')
 
-    string = 'PRD : temperature'
-    ax1 = td.plot(x='time', y=[col for col in td.columns if string in col])
-    col_name = [col for col in td.columns if string in col]
-
-    array = td[[col for col in td.columns if string in col]].to_numpy()
-    print('lifetime = %d years' % (td['time'][td[col_name[0]] < 348].iloc[0] / 365))
+    string_prd = 'PRD : temperature (K)'
+    string_inj = 'INJ : temperature (K)'
+    col_prd = [col for col in td.columns if string_prd in col][0]
+    col_inj = [col for col in td.columns if string_inj in col][0]
+    T0_prd = td[col_prd].iloc[0]
+    T0_inj = td[col_inj].iloc[0]
+    threshold = T0_prd - 0.15 * (T0_prd - T0_inj)
+    try:
+        print('lifetime = %d years' % (td['time'][td[col_prd] <= threshold].iloc[0] / 365))
+    except IndexError:
+        print('lifetime not reached')
 
 # RUN MAIN WITH ALL INPUTS
 input = {}
