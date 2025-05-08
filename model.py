@@ -9,11 +9,13 @@ from darts.physics.geothermal.geothermal import Geothermal, GeothermalPH, Geothe
 
 
 class Model(CICDModel):
-    def __init__(self, n_points=128, iapws_physics: bool = True):
+    def __init__(self, run_params, n_points=128, iapws_physics: bool = True):
         # call base class constructor
         super().__init__()
 
         self.timer.node["initialization"].start()
+
+        self.run_params = run_params    # Save run parameters
 
         self.set_reservoir()
 
@@ -38,32 +40,54 @@ class Model(CICDModel):
         (nx, ny, nz) = (62, 62, 18 + 25 + 18)
         nb = nx * ny * nz
 
-            #Homogeneous
-        perm = np.hstack([[0.001] * 18, 
-                          [250] * 25,             
-                          [0.001] * 18]).astype(float)
-        perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
-            #Heterogeneous
-        # perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_perm.txt', 'PERM')
-        # perm = perm[:nb]
-
-            #Homogeneous
-        poro = np.hstack([[0.001] * 18, 
-                          [0.10] * 25, 
-                          [0.001] * 18]).astype(float)
-        poro = np.broadcast_to(poro[None, None, :], (nx, ny, nz))
-            #Heterogeneous
-        # poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_poro.txt', 'PORO')
-        # poro = poro[:nb]
-
-            #Homogeneous
-        rcond = np.hstack([[216] * 18, 
-                           [350] * 25, 
-                           [216] * 18]).astype(float)
-        rcond = np.broadcast_to(rcond[None, None, :], (nx, ny, nz))
-            #Heterogeneous
-        # rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_rcond.txt', 'RCOND')
-        # rcond = rcond[:nb]
+        if self.run_params['model_name'] == 'homogeneous':
+            perm = np.hstack([[0.001] * 18, 
+                              [250] * 25,             
+                              [0.001] * 18]).astype(float)
+            perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
+            poro = np.hstack([[0.001] * 18, 
+                              [0.10] * 25, 
+                              [0.001] * 18]).astype(float)
+            poro = np.broadcast_to(poro[None, None, :], (nx, ny, nz))
+            rcond = np.hstack([[216] * 18, 
+                               [350] * 25, 
+                               [216] * 18]).astype(float)
+            rcond = np.broadcast_to(rcond[None, None, :], (nx, ny, nz))
+        elif self.run_params['model_name'] == 'model 0':
+            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_perm.txt', 'PERM')
+            perm = perm[:nb]
+            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_poro.txt', 'PORO')
+            poro = poro[:nb]
+            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_rcond.txt', 'RCOND')
+            rcond = rcond[:nb]
+        elif self.run_params['model_name'] == 'model 1':
+            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_perm.txt', 'PERM')
+            perm = perm[:nb]
+            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_poro.txt', 'PORO')
+            poro = poro[:nb]
+            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_rcond.txt', 'RCOND')
+            rcond = rcond[:nb]
+        elif self.run_params['model_name'] == 'model 2':
+            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_perm.txt', 'PERM')
+            perm = perm[:nb]
+            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_poro.txt', 'PORO')
+            poro = poro[:nb]
+            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_rcond.txt', 'RCOND')
+            rcond = rcond[:nb]
+        elif self.run_params['model_name'] == 'model 3':
+            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_perm.txt', 'PERM')
+            perm = perm[:nb]
+            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_poro.txt', 'PORO')
+            poro = poro[:nb]
+            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_rcond.txt', 'RCOND')
+            rcond = rcond[:nb]
+        elif self.run_params['model_name'] == 'model 4':
+            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_perm.txt', 'PERM')
+            perm = perm[:nb]
+            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_poro.txt', 'PORO')
+            poro = poro[:nb]
+            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_rcond.txt', 'RCOND')
+            rcond = rcond[:nb]
 
         dx = np.hstack([[200] * 5, [100] * 5, [50] * 3,
                         [50] * 36,
@@ -113,7 +137,9 @@ class Model(CICDModel):
             self.physics.determine_obl_bounds(state_min=[self.idata.obl.min_p, 273.15],
                                               state_max=[self.idata.obl.max_p, 373.15])
 
-    def set_well_controls(self, rate=8000):
+    def set_well_controls(self, rate=None):
+        if rate is None:
+            rate = self.run_params['WR']
         for i, w in enumerate(self.reservoir.wells):
             if i == 0:
                 w.control = self.physics.new_rate_water_inj(rate, 300) #8000
@@ -162,9 +188,9 @@ class Model(CICDModel):
         :param ref_depth_T: the reference depth for the temperature, km
         :param T_at_ref_depth: the value of the temperature at the reference depth, K
         """
-        #INPUT: q_max and direction for GRADIENT
-        q_max = 3.1e-07        #m/s  3.1e-07
-        direction = 90          #0, 45, 90, 135, 180, 225, 270, 315
+        #INPUT: q and direction for GRADIENT
+        q = self.run_params['q']            #m/s  3.1e-07
+        direction = self.run_params['dir']  #0, 45, 90, 135, 180, 225, 270, 315
         
         if mesh is None:
             mesh = self.reservoir.mesh
@@ -210,10 +236,10 @@ class Model(CICDModel):
             A = dx[:, :, k] * dy[:, :, k]
             perm = self.reservoir.global_data['permx'][:, :, k]
             harmonic_layer[i] = np.sum(A) / np.sum(A / perm)  
-        k_eff = np.mean(harmonic_layer)  #mD
+        k_eff = np.mean(harmonic_layer)    #mD
         # k_eff = 2.4                      #mD from averages
         
-        gradient = 1.0e-5 * q_max * (mu*0.001) / (density * g * k_eff*9.869233e-16)  #bar/m
+        gradient = 1.0e-5 * q * (mu*0.001) / (density * g * k_eff*9.869233e-16)  #bar/m
         # print('GRADIENT is', gradient)
             
         if add_press_grad is None:
