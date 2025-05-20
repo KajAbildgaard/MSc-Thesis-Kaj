@@ -42,7 +42,7 @@ class Model(CICDModel):
 
         if self.run_params['model_name'] == 'homogeneous':
             perm = np.hstack([[0.001] * 18, 
-                              [250] * 25,             
+                              [200] * 25,                     # 250!!!!     
                               [0.001] * 18]).astype(float)
             perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
             poro = np.hstack([[0.001] * 18, 
@@ -130,6 +130,14 @@ class Model(CICDModel):
                                            well_radius=0.16, multi_segment=True)
 
     def set_physics(self):
+        print('MIN P ===', self.idata.obl.min_p)
+        print('MAX P ===', self.idata.obl.max_p)
+        print('MIN E ===', self.idata.obl.min_e)
+        print('MAX E ===', self.idata.obl.max_e)
+        self.idata.obl.min_p = 1
+        self.idata.obl.max_p = 500
+        self.idata.obl.min_e = 1000
+        self.idata.obl.max_e = 15000
         if self.iapws_physics:
             self.physics = Geothermal(self.idata, self.timer)
         else:
@@ -154,7 +162,6 @@ class Model(CICDModel):
         return temp
 
     def set_input_data(self, n_points):
-        #init_type = 'uniform'
         init_type = 'gradient'
         self.idata = InputData(type_hydr='thermal', type_mech='none', init_type=init_type)
 
@@ -189,7 +196,7 @@ class Model(CICDModel):
         :param T_at_ref_depth: the value of the temperature at the reference depth, K
         """
         #INPUT: q and direction for GRADIENT
-        q = self.run_params['q']            #m/s  3.1e-07
+        q = self.run_params['q']            #m/s
         direction = self.run_params['dir']  #0, 45, 90, 135, 180, 225, 270, 315
         
         if mesh is None:
@@ -226,18 +233,18 @@ class Model(CICDModel):
         x_dist = np.concatenate(([0], np.cumsum(dx_vec)[:-1]))
         y_dist = np.concatenate(([0], np.cumsum(dy_vec)[:-1]))
         
-        #g = 9.81
         state_new = value_vector([np.mean(pressure), np.mean(enthalpy)])
         mu = self.physics.property_containers[0].viscosity_ev['water'].evaluate(state_new) #cP?
-        #density = self.physics.property_containers[0].density_ev['water'].evaluate(state_new) #kg/m^3
+        # print('VISCOSITY is', mu)
 
-        harmonic_layer = np.zeros(mz)
-        for i, k in enumerate(range((nz-mz)//2, (nz-mz)//2 + mz)): #range(18, 43)
-            A = dx[:, :, k] * dy[:, :, k]
-            perm = self.reservoir.global_data['permx'][:, :, k]
-            harmonic_layer[i] = np.sum(A) / np.sum(A / perm)  
-        k_eff = np.mean(harmonic_layer)    #mD
-        k_eff = 200                        #mD from averages, for heterogeneous
+        mean_perm = []
+        for i in range((nz-mz)//2, (nz-mz)//2 + mz): #range(18, 43)
+            A = dx[:, :, i] * dy[:, :, i]
+            perm = self.reservoir.global_data['permx'][:, :, i]
+            mean_perm.append(np.sum(perm * A) / np.sum(A)) 
+        mean_perm = np.array(mean_perm)
+        k_eff = np.mean(mean_perm)         #mD
+        print('PERMEABILITY is', k_eff)
         
         gradient = 1.0e-5 * q * (mu*0.001) / (k_eff*9.869233e-16)  #bar/m
         print('GRADIENT is', gradient)

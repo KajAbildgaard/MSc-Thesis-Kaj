@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-Inputs = [['Production'],     # Production or Recharge
-          ['model 4'],        # Model name
-          [3.1e-07],          # Background flow rate (m/s) 3.1e-07
-          [8000],             # Well rate (m3/day)
-
-          [40],               # Number of production years
-          [2500]]             # Number of recharge years     
+Runs = [#[Prod/Recharge,   model,        q (m/s), WR (m3/day), TEST_yrs_prd, TEST_yrs_recharge]
+        ['Recharge',     'model 1', 0, 8000,         40,         0],
+        ['Recharge',     'model 0',     2.3e-07, 8000,         40,         0],
+        ['Recharge',     'model 1',     2.3e-07, 8000,         40,         0],
+        ['Recharge',     'model 2',     2.3e-07, 8000,         40,         0],
+        ['Recharge',     'model 3',     2.3e-07, 8000,         40,         0],
+        ['Recharge',     'model 4',     2.3e-07, 8000,         40,         0],] 
 
 def run_main(input):
     if input[2][0] == 0:
@@ -28,28 +28,52 @@ def run_main(input):
             main(input, output_directory, dir[i])   
 
 def main(input, output_directory, dir):
-    days_prod = input[4][0]*365
-    days_recharge = input[5][0]*365
-
-    rp = {
-    'model_name': input[1][0],
-    'q':           input[2][0],
-    'dir':         dir,
-    'WR':          input[3][0]}
-
+    model_lifetimes = {'homogeneous':  44,   # DO IF STATEMENT FOR T_PRD<345.2
+                       'model 0':      24,
+                       'model 1':      11,
+                       'model 2':      15,
+                       'model 3':      25,
+                       'model 4':      59}
+    rp = {'model_name': input[1][0],
+          'q':          input[2][0],
+          'dir':        dir,
+          'WR':         input[3][0]}
+    
     m = Model(run_params=rp, iapws_physics=True)
-    m.init(discr_type='mpfa', output_folder=output_directory) 
+    m.init(discr_type='mpfa', output_folder=output_directory)
 
-    m.run(days=days_prod, verbose=False)                                
-    m.output_to_vtk(ith_step=0, output_directory=output_directory)      
-    m.output_to_vtk(ith_step=1, output_directory=output_directory)      
+    if input[0][0] == 'Production':
+        m.run(days=100*365, verbose=False)
+        m.output_to_vtk(ith_step=0, output_directory=output_directory)
+        m.output_to_vtk(ith_step=1, output_directory=output_directory)
 
-    if input[0][0] == 'Recharge':
-        m.set_well_controls(rate=0)                                          
-        m.run(days=40*365, verbose=False) # 40 years, max_ts=365
-        m.set_sim_params(max_ts=3650)     
-        m.run(days=days_recharge - 40*365, verbose=False)                       
-        m.output_to_vtk(ith_step=2, output_directory=output_directory)      
+    elif input[0][0] == 'Recharge':
+        lifetime_years = model_lifetimes[rp['model_name']]
+        days_recharge = 2500*365
+        m.run(days=lifetime_years*365, verbose=False)
+        m.output_to_vtk(ith_step=0, output_directory=output_directory)
+        m.output_to_vtk(ith_step=1, output_directory=output_directory)
+
+        m.set_well_controls(rate=0)
+        m.run(days=40*365, restart_dt=m.params.first_ts, verbose=False)  # 40 years
+        m.set_sim_params(max_ts=3650)      # max_ts = 10 years
+        m.run(days=days_recharge - 40*365, verbose=False)
+        m.output_to_vtk(ith_step=2, output_directory=output_directory)
+
+    else:     # TEST runs
+        days_prod     = input[4][0]*365
+        days_recharge = input[5][0]*365
+
+        m.run(days=days_prod, verbose=False)
+        m.output_to_vtk(ith_step=0, output_directory=output_directory)
+        m.output_to_vtk(ith_step=1, output_directory=output_directory)
+
+        if days_recharge != 0:
+            m.set_well_controls(rate=0)
+            m.run(days=40*365, restart_dt=m.params.first_ts, verbose=False)
+            m.set_sim_params(max_ts=3650)
+            m.run(days=days_recharge - 40*365, verbose=False)
+            m.output_to_vtk(ith_step=2, output_directory=output_directory)
 
     m.print_timers()
 
@@ -74,8 +98,7 @@ def main(input, output_directory, dir):
         print('LIFETIME NOT REACHED')
 
 # RUN MAIN WITH ALL INPUTS
-input = {}
-for i in range(len(Inputs[0])):  
-    input[i] = [[row[i]] for row in Inputs]
+for i, run in enumerate(Runs):
+    input = [[val] for val in run]
 
-    run_main(input=input[i])
+    run_main(input=input)
