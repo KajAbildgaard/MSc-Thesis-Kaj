@@ -6,8 +6,7 @@ import numpy as np
 from darts.engines import value_vector, sim_params
 from darts.input.input_data import InputData
 from darts.physics.geothermal.geothermal import Geothermal, GeothermalPH, GeothermalIAPWSFluidProps, GeothermalPHFluidProps
-import os
-import pandas as pd
+from darts.engines import well_control_iface
 
 class Model(CICDModel):
     def __init__(self, run_params, n_points=128, iapws_physics: bool = True):
@@ -32,69 +31,81 @@ class Model(CICDModel):
 
 
     def set_reservoir(self):
-        (nx, ny, nz) = (62, 62, 18 + 25 + 18)
+        # (nx, ny, nz) = (62, 62, 18 + 25 + 18)
+        # nb = nx * ny * nz
+
+        # if self.run_params['model_name'] == 'homogeneous':
+        #     perm = np.hstack([[0.001] * 18, 
+        #                       [200] * 25,                         
+        #                       [0.001] * 18]).astype(float)
+        #     perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
+        #     poro = np.hstack([[0.001] * 18, 
+        #                       [0.10] * 25, 
+        #                       [0.001] * 18]).astype(float)
+        #     poro = np.broadcast_to(poro[None, None, :], (nx, ny, nz))
+        #     rcond = np.hstack([[216] * 18, 
+        #                        [350] * 25, 
+        #                        [216] * 18]).astype(float)
+        #     rcond = np.broadcast_to(rcond[None, None, :], (nx, ny, nz))
+        # elif self.run_params['model_name'] == 'model 0':
+        #     perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_perm.txt', 'PERM')
+        #     perm = perm[:nb]
+        #     poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_poro.txt', 'PORO')
+        #     poro = poro[:nb]
+        #     rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_rcond.txt', 'RCOND')
+        #     rcond = rcond[:nb]
+        # elif self.run_params['model_name'] == 'model 1':
+        #     perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_perm.txt', 'PERM')
+        #     perm = perm[:nb]
+        #     poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_poro.txt', 'PORO')
+        #     poro = poro[:nb]
+        #     rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_rcond.txt', 'RCOND')
+        #     rcond = rcond[:nb]
+        # elif self.run_params['model_name'] == 'model 2':
+        #     perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_perm.txt', 'PERM')
+        #     perm = perm[:nb]
+        #     poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_poro.txt', 'PORO')
+        #     poro = poro[:nb]
+        #     rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_rcond.txt', 'RCOND')
+        #     rcond = rcond[:nb]
+        # elif self.run_params['model_name'] == 'model 3':
+        #     perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_perm.txt', 'PERM')
+        #     perm = perm[:nb]
+        #     poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_poro.txt', 'PORO')
+        #     poro = poro[:nb]
+        #     rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_rcond.txt', 'RCOND')
+        #     rcond = rcond[:nb]
+        # elif self.run_params['model_name'] == 'model 4':
+        #     perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_perm.txt', 'PERM')
+        #     perm = perm[:nb]
+        #     poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_poro.txt', 'PORO')
+        #     poro = poro[:nb]
+        #     rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_rcond.txt', 'RCOND')
+        #     rcond = rcond[:nb]
+
+        # dx = np.hstack([[200] * 5, [100] * 5, [50] * 3,
+        #                 [50] * 36,
+        #                 [50] * 3, [100] * 5, [200] * 5]).astype(float)
+        # dy = dx
+        # dz = np.hstack([[30] * 9, [20] * 2, [10] * 3, [6] * 2, [4] * 2,
+        #                 [4] * 25, 
+        #                 [4] * 2, [6] * 2, [10] * 3, [20] * 2, [30] * 9]).astype(float)
+        
+        # dx = np.broadcast_to(dx[:, None, None], (nx, ny, nz))
+        # dy = np.broadcast_to(dy[None, :, None], (nx, ny, nz))
+        # dz = np.broadcast_to(dz[None, None, :], (nx, ny, nz))
+
+        # TEST
+        (nx, ny, nz) = (1, 10, 1)
         nb = nx * ny * nz
 
-        if self.run_params['model_name'] == 'homogeneous':
-            perm = np.hstack([[0.001] * 18, 
-                              [200] * 25,                         
-                              [0.001] * 18]).astype(float)
-            perm = np.broadcast_to(perm[None, None, :], (nx, ny, nz))
-            poro = np.hstack([[0.001] * 18, 
-                              [0.10] * 25, 
-                              [0.001] * 18]).astype(float)
-            poro = np.broadcast_to(poro[None, None, :], (nx, ny, nz))
-            rcond = np.hstack([[216] * 18, 
-                               [350] * 25, 
-                               [216] * 18]).astype(float)
-            rcond = np.broadcast_to(rcond[None, None, :], (nx, ny, nz))
-        elif self.run_params['model_name'] == 'model 0':
-            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_perm.txt', 'PERM')
-            perm = perm[:nb]
-            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_poro.txt', 'PORO')
-            poro = poro[:nb]
-            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_0_rcond.txt', 'RCOND')
-            rcond = rcond[:nb]
-        elif self.run_params['model_name'] == 'model 1':
-            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_perm.txt', 'PERM')
-            perm = perm[:nb]
-            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_poro.txt', 'PORO')
-            poro = poro[:nb]
-            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_1_rcond.txt', 'RCOND')
-            rcond = rcond[:nb]
-        elif self.run_params['model_name'] == 'model 2':
-            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_perm.txt', 'PERM')
-            perm = perm[:nb]
-            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_poro.txt', 'PORO')
-            poro = poro[:nb]
-            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_2_rcond.txt', 'RCOND')
-            rcond = rcond[:nb]
-        elif self.run_params['model_name'] == 'model 3':
-            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_perm.txt', 'PERM')
-            perm = perm[:nb]
-            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_poro.txt', 'PORO')
-            poro = poro[:nb]
-            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_3_rcond.txt', 'RCOND')
-            rcond = rcond[:nb]
-        elif self.run_params['model_name'] == 'model 4':
-            perm = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_perm.txt', 'PERM')
-            perm = perm[:nb]
-            poro = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_poro.txt', 'PORO')
-            poro = poro[:nb]
-            rcond = load_single_keyword('HeterogeneousModel/largeModel/area1800_varRcond_4_rcond.txt', 'RCOND')
-            rcond = rcond[:nb]
+        perm = np.ones(nb) * 200
+        poro = np.ones(nb) * 0.1
+        rcond = np.ones(nb) * 350
 
-        dx = np.hstack([[200] * 5, [100] * 5, [50] * 3,
-                        [50] * 36,
-                        [50] * 3, [100] * 5, [200] * 5]).astype(float)
-        dy = dx
-        dz = np.hstack([[30] * 9, [20] * 2, [10] * 3, [6] * 2, [4] * 2,
-                        [4] * 25, 
-                        [4] * 2, [6] * 2, [10] * 3, [20] * 2, [30] * 9]).astype(float)
-        
-        dx = np.broadcast_to(dx[:, None, None], (nx, ny, nz))
-        dy = np.broadcast_to(dy[None, :, None], (nx, ny, nz))
-        dz = np.broadcast_to(dz[None, None, :], (nx, ny, nz))
+        dx = 50
+        dy = 50
+        dz = np.ones(nb) * 4
 
         # discretize structured reservoir   
         self.reservoir = StructReservoir(self.timer, nx=nx, ny=ny, nz=nz, dx=dx, dy=dy, dz=dz,
@@ -107,22 +118,22 @@ class Model(CICDModel):
 
         return
 
-    def set_wells(self):
-        # add well's locations
-        iw = [31, 31]  
-        jw = [21, 41] 
+    # def set_wells(self):
+        # # add well's locations
+        # iw = [31, 31]  
+        # jw = [21, 41] 
 
-        # add well
-        self.reservoir.add_well("INJ")
-        for k in range(18, 18+25):  #range(1, self.reservoir.nz)
-            self.reservoir.add_perforation("INJ", cell_index=(iw[0], jw[0], k + 1),
-                                           well_radius=0.16, multi_segment=False)
+        # # add well
+        # self.reservoir.add_well("INJ")
+        # for k in range(18, 18+25):  #range(1, self.reservoir.nz)
+        #     self.reservoir.add_perforation("INJ", cell_index=(iw[0], jw[0], k + 1),
+        #                                    well_radius=0.16, multi_segment=False)
 
-        # add well
-        self.reservoir.add_well("PRD")
-        for k in range(18, 18+25): 
-            self.reservoir.add_perforation("PRD", cell_index=(iw[1], jw[1], k + 1),
-                                           well_radius=0.16, multi_segment=False)
+        # # add well
+        # self.reservoir.add_well("PRD")
+        # for k in range(18, 18+25): 
+        #     self.reservoir.add_perforation("PRD", cell_index=(iw[1], jw[1], k + 1),
+        #                                    well_radius=0.16, multi_segment=False)
 
     def set_physics(self):
         self.idata.obl.min_p = 1
@@ -141,11 +152,19 @@ class Model(CICDModel):
             rate = self.run_params['WR']
         for i, w in enumerate(self.reservoir.wells):
             if i == 0:
-                w.control = self.physics.new_rate_water_inj(rate, 300) #8000
-                # w.control = self.physics.new_bhp_water_inj(230, 308.15)
+                self.physics.set_well_controls(wctrl=w.control,
+                                               control_type=well_control_iface.VOLUMETRIC_RATE,
+                                               is_inj=True,
+                                               target=rate,
+                                               phase_name='water',
+                                               inj_composition=[],
+                                               inj_temp=300)
             else:
-                w.control = self.physics.new_rate_water_prod(rate) #8000
-                # w.control = self.physics.new_bhp_prod(180)
+                self.physics.set_well_controls(wctrl=w.control,
+                                               control_type=well_control_iface.VOLUMETRIC_RATE,
+                                               is_inj=False,
+                                               target=rate
+                                               )
 
     def compute_temperature(self, X):
         nb = self.reservoir.mesh.n_res_blocks
@@ -194,19 +213,21 @@ class Model(CICDModel):
             mesh = self.reservoir.mesh
 
         depth = np.array(mesh.depth, dtype=float)
-       
-        # Set the initial pressure and temperature
-        pressure = np.array(mesh.pressure, copy=False)
+        # 1) Uniform or array -> specify constant or array of values for each variable to self.physics.set_initial_conditions_by_array()
+        # Set the initial pressure and temperature       
+        # pressure = np.array(mesh.pressure, copy=False)
+        pressure = np.zeros(mesh.n_blocks, dtype=float)  
         pressure[:] = (depth[:pressure.size] / 1000 - ref_depth_p) * pressure_grad + p_at_ref_depth
         temperature = (depth[:pressure.size] / 1000 - ref_depth_T) * temperature_grad + T_at_ref_depth
 
-        # Set the initial enthalpy for each block.             
-        enthalpy = np.array(mesh.enthalpy, copy=False)
+        # Set the initial enthalpy for each block.            
+        # enthalpy = np.array(mesh.enthalpy, copy=False)
+        enthalpy = np.zeros(mesh.n_blocks, dtype=float)
         for j in range(mesh.n_blocks):                         
             # Create a state vector with the current pressure and a placeholder for enthalpy.
-            state = value_vector([pressure[j], 0])
+            state = value_vector([pressure[j], temperature[j]])
             # Compute total enthalpy using the physics property container.
-            enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state, temperature[j])
+            enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state)
        
         #Additional pressure field
         nx = self.reservoir.nx  
@@ -226,16 +247,20 @@ class Model(CICDModel):
         
         state_new = value_vector([np.mean(pressure), np.mean(enthalpy)])
         mu = self.physics.property_containers[0].viscosity_ev['water'].evaluate(state_new) #cP?
-        # print('VISCOSITY is', mu)
+        print('PRESSURE is', np.mean(pressure))
+        print('TEMPERATURE is', np.mean(temperature))
+        print('ENTHALPY is', np.mean(enthalpy))
+        print('VISCOSITY is', mu*0.001)
 
-        mean_perm = []
-        for i in range((nz-mz)//2, (nz-mz)//2 + mz): #range(18, 43)
-            A = dx[:, :, i] * dy[:, :, i]
-            perm = self.reservoir.global_data['permx'][:, :, i]
-            mean_perm.append(np.sum(perm * A) / np.sum(A)) 
-        mean_perm = np.array(mean_perm)
-        k_eff = np.mean(mean_perm)         #mD
-        print('PERMEABILITY is', k_eff)
+        # mean_perm = []
+        # for i in range((nz-mz)//2, (nz-mz)//2 + mz): #range(18, 43)
+        #     A = dx[:, :, i] * dy[:, :, i]
+        #     perm = self.reservoir.global_data['permx'][:, :, i]
+        #     mean_perm.append(np.sum(perm * A) / np.sum(A)) 
+        # mean_perm = np.array(mean_perm)
+        # k_eff = np.mean(mean_perm)         #mD
+        # print('PERMEABILITY is', k_eff)
+        k_eff = 200
         
         gradient = 1.0e-5 * q * (mu*0.001) / (k_eff*9.869233e-16)  #bar/m
         print('GRADIENT is', gradient)
@@ -277,46 +302,10 @@ class Model(CICDModel):
         # Set the initial enthalpy for reservoir blocks
         for j in range(n_res):                          
             # Create a state vector with the current pressure and a placeholder for enthalpy.
-            state = value_vector([pressure[j], 0])
+            state = value_vector([pressure[j], temperature[j]])
             # Compute total enthalpy using the physics property container.
-            enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state, temperature[j])
+            enthalpy[j] = self.physics.property_containers[0].compute_total_enthalpy(state)
 
-    def load_baseline_lifetime(self, well_rate: str, model_name: str) -> int:
-        folder = os.path.join('output', "Production", f"q=0, WR={well_rate}", model_name)
-        excel_path = os.path.join(folder, "time_data.xlsx")
-        if not os.path.exists(excel_path):
-            raise FileNotFoundError(f"Baseline file not found: {excel_path}")
-
-        df = pd.read_excel(excel_path,
-                           usecols=['time',
-                                    'PRD : temperature (K)',
-                                    'INJ : temperature (K)'])
-        T0   = df['PRD : temperature (K)'].iloc[0]
-        Tinj = df['INJ : temperature (K)'].iloc[0]
-        thresh = T0 - 0.15 * (T0 - Tinj)
-
-        mask = df['PRD : temperature (K)'] <= thresh
-        if not mask.any():
-            raise ValueError(f"Baseline ({model_name}, {well_rate}) never reached threshold")
-        t_first = df.loc[mask, 'time'].iloc[0]
-        return int(t_first // 365)  # whole years
-
-    def load_or_error(self, well_rate: str, model_name: str) -> int:
-        """
-        Wrapper: try to load baseline lifetime, else raise with context.
-        """
-        try:
-            return self.load_baseline_lifetime(well_rate, model_name)
-        except FileNotFoundError as e:
-            print(f"\nERROR: {e}\nPlease run the q=0 case first.")
-            raise
-        except ValueError as e:
-            print(f"\nERROR: {e}\nCheck your baseline output.\n")
-            raise
-    
-    def compute_threshold(self, td_dict):
-        prd = next(k for k in td_dict.keys() if "PRD : temperature (K)" in k)
-        inj = next(k for k in td_dict.keys() if "INJ : temperature (K)" in k)
-        T0   = td_dict[prd][0]
-        Tinj = td_dict[inj][0]
-        return T0 - 0.15 * (T0 - Tinj)
+        initial_values = {'pressure': pressure,
+                          'enthalpy': enthalpy,}
+        self.physics.set_initial_conditions_from_array(mesh=self.reservoir.mesh, input_distribution=initial_values)

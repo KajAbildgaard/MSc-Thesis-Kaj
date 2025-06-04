@@ -1,18 +1,13 @@
 from darts.engines import value_vector
 
-from model import Model
+from dv_model import Model
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 
 Runs = [#[Prod/Recharge,   model,        q (m/s), WR (m3/day), TEST_yrs_prd, TEST_yrs_recharge]
-        ['Recharge',     'homogeneous', 2.07e-07, 8000,          0,         0],
-        ['Recharge',     'model 0',     2.07e-07, 8000,          0,         0],
-        ['Recharge',     'model 1',     2.07e-07, 8000,          0,         0],
-        ['Recharge',     'model 2',     2.07e-07, 8000,          0,         0],
-        ['Recharge',     'model 3',     2.07e-07, 8000,          0,         0],
-        ['Recharge',     'model 4',     2.07e-07, 8000,          0,         0],] 
+        ['Darcy Velocity test 1D',     'homogeneous', 2.3e-07, 0,          40,         0],] 
 
 def main(input, output_directory, dir):
     rp = {'model_name': input[1][0],
@@ -21,49 +16,35 @@ def main(input, output_directory, dir):
           'WR':         input[3][0]}
     
     m = Model(run_params=rp, iapws_physics=True)
-    m.init(discr_type='mpfa', output_folder=output_directory)
+    m.init(discr_type='mpfa')
+    m.set_output(output_folder=output_directory)
+    m.platform = 'cpu'
+    m.reconstruct_velocities()
 
     if input[0][0] == 'Production':
-        if input[2][0] == 0:  
-            for t in range(100):
-                m.run(days=365, verbose=False)
-            td = m.physics.engine.time_data
-            threshold = m.compute_threshold(td)
-            years = 100
-            max_years = 1000
-            while years < max_years:
-                last_T = td[next(k for k in td.keys() if "PRD : temperature (K)" in k)][-1]
-                if last_T <= threshold:
-                    break
-                m.run(days=365, verbose=False)
-                years += 1
-            m.output_to_vtk(ith_step=0, output_directory=output_directory)
-            m.output_to_vtk(ith_step=years, output_directory=output_directory)
-
-        elif input[2][0] != 0:  
-            years_base = m.load_or_error(input[3][0], input[1][0])
-            for t in range(100):
-                m.run(days=365, verbose=False)
-            years = 100
-            if years_base > 100:
-                while years < years_base:
-                    m.run(days=365, verbose=False)
-                    years += 1
-            m.output_to_vtk(ith_step=0, output_directory=output_directory)
-            m.output_to_vtk(ith_step=years, output_directory=output_directory)
+        m.run(days=100*365, verbose=False)
+        m.output_to_vtk(ith_step=0, output_directory=output_directory)
+        m.output_to_vtk(ith_step=1, output_directory=output_directory)
 
     elif input[0][0] == 'Recharge':
         m.run(days=365, verbose=False)
-        td = m.physics.engine.time_data
-        threshold = m.compute_threshold(td)
+        td_dict = m.physics.engine.time_data
+
+        prd_col = next(k for k in td_dict.keys() if "PRD : temperature (K)" in k)
+        inj_col = next(k for k in td_dict.keys() if "INJ : temperature (K)" in k)
+        T0   = td_dict[prd_col][0]     
+        Tinj = td_dict[inj_col][0]
+        threshold = T0 - 0.15 * (T0 - Tinj)
+
+        max_search_years = 1000
         years = 1
-        max_years = 1000
-        while years < max_years:
-            last_T = td[next(k for k in td.keys() if "PRD : temperature (K)" in k)][-1]  
+        while years < max_search_years:
+            last_T = td_dict[prd_col][-1]  
             if last_T <= threshold:
                 break
             m.run(days=365, verbose=False)
             years += 1
+        print('years === %d' % years)
         m.output_to_vtk(ith_step=0, output_directory=output_directory)
         m.output_to_vtk(ith_step=years, output_directory=output_directory)
 
@@ -79,8 +60,12 @@ def main(input, output_directory, dir):
         days_recharge = input[5][0]*365
 
         m.run(days=days_prod, verbose=False)
-        m.output_to_vtk(ith_step=0, output_directory=output_directory)
-        m.output_to_vtk(ith_step=1, output_directory=output_directory)
+        darcy_velocity = m.physics.engine.darcy_velocities
+        reshaped_velocities = np.array(darcy_velocity).reshape(m.reservoir.n, m.physics.nph, 3)
+        vel_path = os.path.join(output_directory, 'darcy_velocities.npy')
+        np.save(vel_path, reshaped_velocities)
+        # m.output_to_vtk(ith_step=0, output_directory=output_directory)
+        # m.output_to_vtk(ith_step=1, output_directory=output_directory)
 
         if days_recharge != 0:
             m.set_well_controls(rate=0)
