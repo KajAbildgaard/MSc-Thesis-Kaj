@@ -298,6 +298,9 @@ class Model(CICDModel):
         p3d = pressure[:n_res].reshape(nx, ny, nz, order='F')
         p3d += extra_p_along_x + extra_p_along_y
         pressure[:n_res] = p3d.flatten(order='A')
+        print('Pressure at the first block is', pressure[0])
+        print('Pressure at the last block is', pressure[-1])
+        print('All pressure values', pressure)
 
         # Set the initial enthalpy for reservoir blocks
         for j in range(n_res):                          
