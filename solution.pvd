@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
 <Collection>
-<DataSet timestep="0.0" group="" part="0" file="output\Recharge\q=2.07e-07, WR=8000\model 4, dir=315\solution_ts0.vts" name=""/>
-<DataSet timestep="13505.0" group="" part="0" file="output\Recharge\q=2.07e-07, WR=8000\model 4, dir=315\solution_ts37.vts" name=""/>
-<DataSet timestep="926005.0" group="" part="0" file="output\Recharge\q=2.07e-07, WR=8000\model 4, dir=315\solution_ts39.vts" name=""/>
+<DataSet timestep="0.0" group="" part="0" file="output\Darcy Velocity\q=2.3e-07, WR=8000\homogeneous, dir=315\vtk_files\solution_ts0.vts" name=""/>
+<DataSet timestep="18250.0" group="" part="0" file="output\Darcy Velocity\q=2.3e-07, WR=8000\homogeneous, dir=315\vtk_files\solution_ts1.vts" name=""/>
 </Collection>
 </VTKFile>

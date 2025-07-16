@@ -7,7 +7,7 @@ import numpy as np
 import os
 
 Runs = [#[Prod/Recharge,   model,        q (m/s), WR (m3/day), TEST_yrs_prd, TEST_yrs_recharge]
-        ['Darcy Velocity test 1D',     'homogeneous', 2.3e-07, 0,          40,         0],] 
+        ['Darcy Velocity',     'homogeneous', 2.3e-07, 8000,          50,         0],] 
 
 def main(input, output_directory, dir):
     rp = {'model_name': input[1][0],
@@ -29,17 +29,18 @@ def main(input, output_directory, dir):
     reshaped_velocities = np.array(darcy_velocity).reshape(m.reservoir.n, m.physics.nph, 3)
     vel_path = os.path.join(output_directory, 'darcy_velocities.npy')
     np.save(vel_path, reshaped_velocities)
+    m.output.output_to_vtk()
 
-    # Check pressures
-    nx = m.reservoir.nx
-    ny = m.reservoir.ny
-    nz = m.reservoir.nz
-    X = np.array(m.physics.engine.X)  
-    n_vars = m.physics.n_vars              
-    pres = X[0 :: n_vars]       # 0, 2, 4, ....
-    P3d = pres.reshape((nx, ny, nz), order='F')
-    for y in range(ny):
-        print(f"P_{y}  = {P3d[0, y, 0]:.6f}")
+    # # Check pressures
+    # nx = m.reservoir.nx
+    # ny = m.reservoir.ny
+    # nz = m.reservoir.nz
+    # X = np.array(m.physics.engine.X)  
+    # n_vars = m.physics.n_vars              
+    # pres = X[0 :: n_vars]       # 0, 2, 4, ....
+    # P3d = pres.reshape((nx, ny, nz), order='F')
+    # for y in range(ny):
+    #     print(f"P_{y}  = {P3d[0, y, 0]:.6f}")
 
     m.print_timers()
 
@@ -51,17 +52,17 @@ def main(input, output_directory, dir):
     with pd.ExcelWriter(excel_path) as writer:
         td.to_excel(writer, sheet_name='Sheet1')
 
-    # string_prd = 'PRD : temperature (K)'
-    # string_inj = 'INJ : temperature (K)'
-    # col_prd = [col for col in td.columns if string_prd in col][0]
-    # col_inj = [col for col in td.columns if string_inj in col][0]
-    # T0_prd = td[col_prd].iloc[0]
-    # T0_inj = td[col_inj].iloc[0]
-    # threshold = T0_prd - 0.15 * (T0_prd - T0_inj)
-    # try:
-    #     print('lifetime = %d years' % (td['time'][td[col_prd] <= threshold].iloc[0] / 365))
-    # except IndexError:
-    #     print('LIFETIME NOT REACHED')
+    string_prd = 'PRD : temperature (K)'
+    string_inj = 'INJ : temperature (K)'
+    col_prd = [col for col in td.columns if string_prd in col][0]
+    col_inj = [col for col in td.columns if string_inj in col][0]
+    T0_prd = td[col_prd].iloc[0]
+    T0_inj = td[col_inj].iloc[0]
+    threshold = T0_prd - 0.15 * (T0_prd - T0_inj)
+    try:
+        print('lifetime = %d years' % (td['time'][td[col_prd] <= threshold].iloc[0] / 365))
+    except IndexError:
+        print('LIFETIME NOT REACHED')
 
 def run_main(input):
     if input[2][0] == 0:

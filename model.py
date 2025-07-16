@@ -141,10 +141,10 @@ class Model(CICDModel):
             rate = self.run_params['WR']
         for i, w in enumerate(self.reservoir.wells):
             if i == 0:
-                w.control = self.physics.new_rate_water_inj(rate, 300) #8000
+                w.control = self.physics.new_rate_water_inj(rate, 300)
                 # w.control = self.physics.new_bhp_water_inj(230, 308.15)
             else:
-                w.control = self.physics.new_rate_water_prod(rate) #8000
+                w.control = self.physics.new_rate_water_prod(rate) 
                 # w.control = self.physics.new_bhp_prod(180)
 
     def compute_temperature(self, X):
@@ -199,6 +199,7 @@ class Model(CICDModel):
         pressure = np.array(mesh.pressure, copy=False)
         pressure[:] = (depth[:pressure.size] / 1000 - ref_depth_p) * pressure_grad + p_at_ref_depth
         temperature = (depth[:pressure.size] / 1000 - ref_depth_T) * temperature_grad + T_at_ref_depth
+        print('TEMPERATURE is', temperature)
 
         # Set the initial enthalpy for each block.             
         enthalpy = np.array(mesh.enthalpy, copy=False)
@@ -320,3 +321,12 @@ class Model(CICDModel):
         T0   = td_dict[prd][0]
         Tinj = td_dict[inj][0]
         return T0 - 0.15 * (T0 - Tinj)
+    
+    def shut_wells(self, base_rate, step_frac=0.1, days_per_step=10):
+        for i in range(int(1.0 / step_frac)):
+            rate = base_rate * (1.0 - ((i+1) * step_frac))
+            self.set_well_controls(rate=rate)
+            self.run(days=days_per_step, restart_dt=self.params.first_ts, verbose=False)
+        ith_step = len(range(int(1.0 / step_frac)))
+        days = days_per_step * ith_step
+        return ith_step, days
