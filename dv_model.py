@@ -146,7 +146,7 @@ class Model(CICDModel):
                                                target=rate,
                                                phase_name='water',
                                                inj_composition=[],
-                                               inj_temp=300)
+                                               inj_temp=353.15)
             else:
                 self.physics.set_well_controls(wctrl=w.control,
                                                control_type=well_control_iface.VOLUMETRIC_RATE,

@@ -7,7 +7,9 @@ import numpy as np
 import os
 
 Runs = [#[Prod/Recharge,   model,        q (m/s), WR (m3/day), TEST_yrs_prd, TEST_yrs_recharge]
-        ['Darcy Velocity',     'homogeneous', 2.3e-07, 8000,          50,         0],] 
+        ['Darcy Velocity inj353',     'homogeneous', 0, 8000,          50,         0],] 
+
+
 
 def main(input, output_directory, dir):
     rp = {'model_name': input[1][0],
