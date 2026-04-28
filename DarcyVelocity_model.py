@@ -146,7 +146,7 @@ class Model(CICDModel):
                                                target=rate,
                                                phase_name='water',
                                                inj_composition=[],
-                                               inj_temp=353.15)
+                                               inj_temp=353.15) # Set to 353.15 for testing, use 300 for production case
             else:
                 self.physics.set_well_controls(wctrl=w.control,
                                                control_type=well_control_iface.VOLUMETRIC_RATE,
@@ -235,7 +235,7 @@ class Model(CICDModel):
         
         state_new = value_vector([np.mean(pressure), np.mean(enthalpy)])
         mu = self.physics.property_containers[0].viscosity_ev['water'].evaluate(state_new) #cP?
-        print('PRESSURE is', np.mean(pressure))
+        # print('PRESSURE is', np.mean(pressure))
         print('TEMPERATURE is', np.mean(temperature))
         print('ENTHALPY is', np.mean(enthalpy))
         print('VISCOSITY is', mu*0.001)
@@ -285,9 +285,9 @@ class Model(CICDModel):
         p3d = pressure[:n_res].reshape(nx, ny, nz, order='F')
         p3d += extra_p_along_x + extra_p_along_y
         pressure[:n_res] = p3d.flatten(order='A')
-        print('Pressure at the first block is', pressure[0])
-        print('Pressure at the last block is', pressure[-1])
-        print('All pressure values', pressure)
+        # print('Pressure at the first block is', pressure[0])
+        # print('Pressure at the last block is', pressure[-1])
+        # print('All pressure values', pressure)
 
         # Set the initial enthalpy for reservoir blocks
         for j in range(n_res):                          

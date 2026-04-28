@@ -1,14 +1,15 @@
+# open_darts-1.3.1 USED
 from darts.engines import value_vector
 
-from dv_model import Model
+from DarcyVelocity_model import Model
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 
 Runs = [#[Prod/Recharge,   model,        q (m/s), WR (m3/day), TEST_yrs_prd, TEST_yrs_recharge]
-        ['Darcy Velocity inj353',     'homogeneous', 0, 8000,          50,         0],] 
-
+        ['NewDarcyinj353',     'homogeneous', 0,         8000,          50,         0],
+        ['NewDarcyinj353',     'homogeneous', 0,         4000,          50,         0],] 
 
 
 def main(input, output_directory, dir):
@@ -33,17 +34,6 @@ def main(input, output_directory, dir):
     np.save(vel_path, reshaped_velocities)
     m.output.output_to_vtk()
 
-    # # Check pressures
-    # nx = m.reservoir.nx
-    # ny = m.reservoir.ny
-    # nz = m.reservoir.nz
-    # X = np.array(m.physics.engine.X)  
-    # n_vars = m.physics.n_vars              
-    # pres = X[0 :: n_vars]       # 0, 2, 4, ....
-    # P3d = pres.reshape((nx, ny, nz), order='F')
-    # for y in range(ny):
-    #     print(f"P_{y}  = {P3d[0, y, 0]:.6f}")
-
     m.print_timers()
 
     td = pd.DataFrame.from_dict(m.physics.engine.time_data)
@@ -67,7 +57,7 @@ def main(input, output_directory, dir):
         print('LIFETIME NOT REACHED')
 
 def run_main(input):
-    if input[2][0] == 0:
+    if input[2][0] == 0:  # If q=0, only run for dir=0, otherwise run for all directions
         dir = 0
         output_directory = f'output/{input[0][0]}/q={input[2][0]}, WR={input[3][0]}/{input[1][0]}'
         os.makedirs(output_directory, exist_ok=True)

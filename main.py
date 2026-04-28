@@ -1,3 +1,4 @@
+# open_darts-1.2.1 USED
 from darts.engines import value_vector, redirect_darts_output
 
 from model import Model
@@ -7,7 +8,11 @@ import numpy as np
 import os
 
 Runs = [#[Prod/Recharge,   model,        q (m/s), WR (m3/day), TEST_yrs_prd, TEST_yrs_recharge]
-        ['temptest',     'model 4',1.15e-07,        4000,          50,         0],]
+        ['temptest',     'model 0',         0,        8000,          10,         0],
+        ['temptest',     'model 1',         0,        8000,          10,         0],
+        ['temptest',     'model 2',         0,        8000,          10,         0],
+        ['temptest',     'model 3',         0,        8000,          10,         0],
+        ['temptest',     'model 4',         0,        8000,          10,         0],]
    
 
 def main(input, output_directory, dir):
@@ -89,6 +94,7 @@ def main(input, output_directory, dir):
             years += 1
         m.output_to_vtk(ith_step=0, output_directory=output_directory)
         m.output_to_vtk(ith_step=years, output_directory=output_directory)
+        # m.output_to_vtk(output_directory=output_directory) # Save all time steps
 
         if years_recharge != 0:
             m.set_well_controls(rate=0)
@@ -140,7 +146,7 @@ def main(input, output_directory, dir):
         print('LIFETIME NOT REACHED')
 
 def run_main(input):
-    if input[2][0] == 0:
+    if input[2][0] == 0:  # If q=0, only run for dir=0, otherwise run for all directions
         dir = 0
         output_directory = f'output/{input[0][0]}/q={input[2][0]}, WR={input[3][0]}/{input[1][0]}'
         os.makedirs(output_directory, exist_ok=True)
